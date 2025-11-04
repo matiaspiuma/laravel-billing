@@ -41,6 +41,18 @@ class PaymentMethod extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'customer_id',
+        'stripe_id',
+    ];
+
+    protected $hidden = [
+        'stripe_id',
+        'exp_month',
+        'exp_year',
+    ];
+
     protected $casts = [
         'is_default' => 'boolean',
         'metadata' => 'array',

@@ -55,6 +55,19 @@ class Invoice extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'customer_id',
+        'stripe_id',
+        'invoice_number',
+        'paid_at',
+        'voided_at',
+    ];
+
+    protected $hidden = [
+        'stripe_id',
+    ];
+
     protected $casts = [
         'subtotal' => 'decimal:2',
         'tax' => 'decimal:2',
@@ -184,16 +197,20 @@ class Invoice extends Model
         $prefix = config('billing.invoice.number_prefix', 'INV-');
         $startingNumber = config('billing.invoice.starting_number', 1000);
 
-        $lastInvoice = static::orderBy('id', 'desc')->first();
+        // Use database locking to prevent race conditions
+        return \DB::transaction(function () use ($prefix, $startingNumber) {
+            // Lock the table for this transaction to prevent concurrent number generation
+            $lastInvoice = static::orderBy('id', 'desc')->lockForUpdate()->first();
 
-        if (! $lastInvoice) {
-            return $prefix . $startingNumber;
-        }
+            if (! $lastInvoice) {
+                return $prefix . $startingNumber;
+            }
 
-        // Extract number from last invoice
-        $lastNumber = (int) str_replace($prefix, '', $lastInvoice->invoice_number);
-        $nextNumber = max($lastNumber + 1, $startingNumber);
+            // Extract number from last invoice
+            $lastNumber = (int) str_replace($prefix, '', $lastInvoice->invoice_number);
+            $nextNumber = max($lastNumber + 1, $startingNumber);
 
-        return $prefix . $nextNumber;
+            return $prefix . $nextNumber;
+        });
     }
 }

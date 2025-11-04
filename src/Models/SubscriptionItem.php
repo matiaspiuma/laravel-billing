@@ -36,6 +36,16 @@ class SubscriptionItem extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'subscription_id',
+        'stripe_id',
+    ];
+
+    protected $hidden = [
+        'stripe_id',
+    ];
+
     protected $casts = [
         'quantity' => 'integer',
         'trial_ends_at' => 'datetime',

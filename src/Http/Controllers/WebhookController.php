@@ -8,6 +8,7 @@ use Bhhaskin\Billing\Models\Invoice;
 use Bhhaskin\Billing\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 
@@ -23,40 +24,83 @@ class WebhookController extends Controller
         $secret = config('billing.stripe.webhook_secret');
 
         if (! $secret) {
+            Log::error('Stripe webhook received but webhook secret not configured');
             return response()->json(['error' => 'Webhook secret not configured'], 500);
         }
 
         try {
             $event = Webhook::constructEvent($payload, $signature, $secret);
         } catch (SignatureVerificationException $e) {
+            // Log signature verification failures for security monitoring
+            Log::warning('Stripe webhook signature verification failed', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'signature' => substr($signature ?? '', 0, 20) . '...',
+                'error' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Invalid signature'], 400);
+        } catch (\UnexpectedValueException $e) {
+            // JSON parsing error
+            Log::error('Stripe webhook JSON parsing error', [
+                'ip' => $request->ip(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Invalid payload'], 400);
+        } catch (\Exception $e) {
+            // Other errors during event construction
+            Log::error('Stripe webhook processing error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'Webhook processing failed'], 400);
         }
 
-        // Handle the event
-        switch ($event->type) {
-            case 'invoice.payment_succeeded':
-                $this->handleInvoicePaymentSucceeded($event->data->object);
-                break;
+        // Log received webhook for debugging
+        Log::info('Stripe webhook received', [
+            'event_type' => $event->type,
+            'event_id' => $event->id,
+        ]);
 
-            case 'invoice.payment_failed':
-                $this->handleInvoicePaymentFailed($event->data->object);
-                break;
+        // Handle the event with try-catch to prevent one failure from breaking webhook processing
+        try {
+            switch ($event->type) {
+                case 'invoice.payment_succeeded':
+                    $this->handleInvoicePaymentSucceeded($event->data->object);
+                    break;
 
-            case 'customer.subscription.updated':
-                $this->handleSubscriptionUpdated($event->data->object);
-                break;
+                case 'invoice.payment_failed':
+                    $this->handleInvoicePaymentFailed($event->data->object);
+                    break;
 
-            case 'customer.subscription.deleted':
-                $this->handleSubscriptionDeleted($event->data->object);
-                break;
+                case 'customer.subscription.updated':
+                    $this->handleSubscriptionUpdated($event->data->object);
+                    break;
 
-            case 'payment_method.attached':
-                $this->handlePaymentMethodAttached($event->data->object);
-                break;
+                case 'customer.subscription.deleted':
+                    $this->handleSubscriptionDeleted($event->data->object);
+                    break;
 
-            default:
-                // Unhandled event type
-                break;
+                case 'payment_method.attached':
+                    $this->handlePaymentMethodAttached($event->data->object);
+                    break;
+
+                default:
+                    // Log unhandled event types for monitoring
+                    Log::info('Unhandled Stripe webhook event type', [
+                        'event_type' => $event->type,
+                        'event_id' => $event->id,
+                    ]);
+                    break;
+            }
+        } catch (\Exception $e) {
+            Log::error('Error handling Stripe webhook event', [
+                'event_type' => $event->type,
+                'event_id' => $event->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            // Still return 200 to prevent Stripe from retrying
+            // The error is logged for manual investigation
         }
 
         return response()->json(['status' => 'success']);

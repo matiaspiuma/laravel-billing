@@ -41,11 +41,11 @@ class SubscriptionController extends Controller
      */
     public function show(Request $request, string $uuid): JsonResponse
     {
-        $user = $request->user();
-        $subscription = $user->subscriptions()
-            ->where('uuid', $uuid)
+        $subscription = Subscription::where('uuid', $uuid)
             ->with('items.plan')
             ->firstOrFail();
+
+        $this->authorize('view', $subscription);
 
         return response()->json([
             'data' => $subscription,
@@ -100,10 +100,13 @@ class SubscriptionController extends Controller
      */
     public function destroy(Request $request, string $uuid): JsonResponse
     {
-        $user = $request->user();
-        $subscription = $user->subscriptions()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $validated = $request->validate([
+            'immediately' => 'sometimes|boolean',
+        ]);
+
+        $subscription = Subscription::where('uuid', $uuid)->firstOrFail();
+
+        $this->authorize('delete', $subscription);
 
         $immediately = $request->boolean('immediately', false);
 
@@ -156,10 +159,9 @@ class SubscriptionController extends Controller
      */
     public function resume(Request $request, string $uuid): JsonResponse
     {
-        $user = $request->user();
-        $subscription = $user->subscriptions()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $subscription = Subscription::where('uuid', $uuid)->firstOrFail();
+
+        $this->authorize('resume', $subscription);
 
         if (! $subscription->onGracePeriod()) {
             return response()->json([

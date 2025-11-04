@@ -36,6 +36,12 @@ class UsageRecord extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'subscription_item_id',
+        'reported_to_stripe',
+    ];
+
     protected $casts = [
         'quantity' => 'integer',
         'timestamp' => 'datetime',

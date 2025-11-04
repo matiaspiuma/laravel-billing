@@ -77,6 +77,17 @@ class Plan extends Model
         'sort_order',
     ];
 
+    protected $guarded = [
+        'id',
+        'stripe_product_id',
+        'stripe_price_id',
+    ];
+
+    protected $hidden = [
+        'stripe_product_id',
+        'stripe_price_id',
+    ];
+
     protected $casts = [
         'price' => 'decimal:2',
         'requires_plan' => 'boolean',

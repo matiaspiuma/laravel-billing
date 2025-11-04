@@ -28,7 +28,10 @@ class PlanController extends Controller
      */
     public function show(string $uuid): JsonResponse
     {
-        $plan = Plan::where('uuid', $uuid)->firstOrFail();
+        // Only show active plans to prevent exposing internal/inactive plans
+        $plan = Plan::where('uuid', $uuid)
+            ->active()
+            ->firstOrFail();
 
         return response()->json([
             'data' => $plan,

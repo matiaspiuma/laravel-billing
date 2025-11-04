@@ -56,6 +56,18 @@ class Subscription extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'customer_id',
+        'stripe_id',
+        'stripe_status',
+    ];
+
+    protected $hidden = [
+        'stripe_id',
+        'stripe_status',
+    ];
+
     protected $casts = [
         'trial_ends_at' => 'datetime',
         'current_period_start' => 'datetime',

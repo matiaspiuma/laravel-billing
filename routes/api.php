@@ -18,28 +18,44 @@ use Illuminate\Support\Facades\Route;
 |     require __DIR__.'/../vendor/bhhaskin/laravel-billing/routes/api.php';
 | });
 |
+| IMPORTANT: Add the webhook route to your VerifyCsrfToken middleware's
+| $except array to exclude it from CSRF verification:
+|
+| protected $except = [
+|     'billing/webhook/stripe',
+| ];
+|
 */
 
-// Public routes
-Route::prefix('billing')->group(function () {
+// Public routes (rate limited to prevent abuse)
+Route::prefix('billing')->middleware(['throttle:60,1'])->group(function () {
     // Plans
     Route::get('/plans', [PlanController::class, 'index'])->name('billing.plans.index');
     Route::get('/plans/{uuid}', [PlanController::class, 'show'])->name('billing.plans.show');
 });
 
 // Protected routes (require authentication middleware in consumer app)
-Route::prefix('billing')->middleware(['auth:sanctum'])->group(function () {
-    // Subscriptions
+Route::prefix('billing')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    // Subscriptions (read operations)
     Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('billing.subscriptions.index');
-    Route::post('/subscriptions', [SubscriptionController::class, 'store'])->name('billing.subscriptions.store');
     Route::get('/subscriptions/{uuid}', [SubscriptionController::class, 'show'])->name('billing.subscriptions.show');
-    Route::delete('/subscriptions/{uuid}', [SubscriptionController::class, 'destroy'])->name('billing.subscriptions.destroy');
-    Route::post('/subscriptions/{uuid}/resume', [SubscriptionController::class, 'resume'])->name('billing.subscriptions.resume');
+
+    // Subscriptions (write operations - more restrictive rate limit)
+    Route::post('/subscriptions', [SubscriptionController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('billing.subscriptions.store');
+    Route::delete('/subscriptions/{uuid}', [SubscriptionController::class, 'destroy'])
+        ->name('billing.subscriptions.destroy');
+    Route::post('/subscriptions/{uuid}/resume', [SubscriptionController::class, 'resume'])
+        ->name('billing.subscriptions.resume');
 
     // Invoices
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('billing.invoices.index');
     Route::get('/invoices/{uuid}', [InvoiceController::class, 'show'])->name('billing.invoices.show');
 });
 
-// Webhook routes (no authentication)
-Route::post('/billing/webhook/stripe', [WebhookController::class, 'handle'])->name('billing.webhook.stripe');
+// Webhook routes (no authentication, signature verified in controller)
+// Must be excluded from CSRF verification in consumer app's VerifyCsrfToken middleware
+Route::post('/billing/webhook/stripe', [WebhookController::class, 'handle'])
+    ->middleware('throttle:100,1')
+    ->name('billing.webhook.stripe');

@@ -36,6 +36,15 @@ class Customer extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'stripe_id',
+    ];
+
+    protected $hidden = [
+        'stripe_id',
+    ];
+
     protected $casts = [
         'metadata' => 'array',
     ];

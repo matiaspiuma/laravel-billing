@@ -43,6 +43,11 @@ class InvoiceItem extends Model
         'metadata',
     ];
 
+    protected $guarded = [
+        'id',
+        'invoice_id',
+    ];
+
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',

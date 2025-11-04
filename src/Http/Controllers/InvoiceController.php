@@ -2,6 +2,7 @@
 
 namespace Bhhaskin\Billing\Http\Controllers;
 
+use Bhhaskin\Billing\Models\Invoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -27,11 +28,11 @@ class InvoiceController extends Controller
      */
     public function show(Request $request, string $uuid): JsonResponse
     {
-        $user = $request->user();
-        $invoice = $user->invoices()
-            ->where('uuid', $uuid)
+        $invoice = Invoice::where('uuid', $uuid)
             ->with('items.plan')
             ->firstOrFail();
+
+        $this->authorize('view', $invoice);
 
         return response()->json([
             'data' => $invoice,
