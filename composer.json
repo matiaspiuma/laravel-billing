@@ -1,5 +1,5 @@
 {
-    "name": "bhhaskin/laravel-billing",
+    "name": "matiaspiuma/laravel-billing",
     "description": "Stripe billing and subscription management for Laravel applications.",
     "type": "library",
     "license": "MIT",
@@ -18,10 +18,10 @@
     ],
     "require": {
         "php": "^8.1",
-        "illuminate/auth": "^10.0 || ^11.0",
-        "illuminate/database": "^10.0 || ^11.0",
-        "illuminate/support": "^10.0 || ^11.0",
-        "illuminate/console": "^10.0 || ^11.0",
+        "illuminate/auth": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/database": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/console": "^10.0 || ^11.0 || ^12.0",
         "stripe/stripe-php": "^13.0"
     },
     "require-dev": {
@@ -43,7 +43,7 @@
         }
     },
     "suggest": {
-        "bhhaskin/laravel-workspaces": "Enable workspace-based billing support"
+        "matiaspiuma/laravel-workspaces": "Enable workspace-based billing support"
     },
     "extra": {
         "laravel": {
